@@ -20,7 +20,7 @@ def main():
     ax.set_xlabel(r"$x$")
     ax.set_ylabel(r"$y$")
     ax.legend()
-    fig.savefig(fig_dir / "sin_plot.pgf")
+    fig.savefig(fig_dir / "sin_plot.pdf")
     plt.close(fig)
 
 

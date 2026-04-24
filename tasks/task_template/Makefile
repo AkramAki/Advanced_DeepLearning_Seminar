@@ -14,7 +14,7 @@ build/figures.pdf: code/make_plots.py | $(BUILD_DIR)
 	PYTHONPATH=../.. MPLCONFIGDIR=$(BUILD_DIR) python code/make_plots.py 
 
 # report (reruns only if tex or figures changed)
-report/main.pdf: report/main.tex build/sin_plot.pdf build/training_curve.pdf
+report/main.pdf: report/main.tex build/figures.pdf
 	cd report && latexmk -lualatex -output-directory=../$(BUILD_DIR) main.tex
 	cp build/main.pdf report/main.pdf
 
