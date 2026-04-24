@@ -1,0 +1,141 @@
+% -----------------------------------------------------------------------------
+% Document class
+% scrartcl = clean article class for reports; bibliography in TOC, good tables
+% -----------------------------------------------------------------------------
+\documentclass[
+  bibliography=totoc,
+  captions=tableheading,
+]{scrartcl}
+
+% Fix minor KOMA compatibility issues
+\usepackage{scrhack}
+
+% Warn if recompilation needed (refs, TOC, etc.)
+\usepackage[aux]{rerunfilecheck}
+
+% Core math packages (align, symbols, extensions)
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+
+% Modern font handling (requires lualatex/xelatex)
+\usepackage{fontspec}
+\recalctypearea{} % recompute layout after font setup
+
+% Language settings (hyphenation, captions)
+\usepackage[english]{babel}
+
+% Modern math fonts + ISO style (clean scientific notation)
+\usepackage[
+  math-style=ISO,
+  bold-style=ISO,
+  sans-style=italic,
+  nabla=upright,
+  partial=upright,
+  mathrm=sym,
+]{unicode-math}
+
+\setmathfont{Latin Modern Math} % default math font
+\setmathfont{XITS Math}[range={scr, bfscr}] % nicer script letters
+\setmathfont{XITS Math}[range={cal, bfcal}, StylisticSet=1]
+
+% Numbers & units formatting (\num, \SI, etc.)
+\usepackage[
+  locale=US,
+  separate-uncertainty=true,
+  per-mode=symbol-or-fraction,
+  detect-all,
+]{siunitx}
+
+% Quotes (recommended with biblatex)
+\usepackage[english=american]{csquotes}
+
+% Float placement control (figures/tables positioning)
+\usepackage{float}
+\floatplacement{figure}{htbp}
+\floatplacement{table}{htbp}
+
+% Keep figures inside sections (prevents drifting)
+\usepackage[section,below]{placeins}
+
+% text wrapping around figures
+\usepackage{wrapfig}      
+
+% Caption styling (bold labels, smaller font)
+\usepackage[
+  labelfont=bf,
+  font=small,
+  width=0.9\textwidth,
+]{caption}
+
+% Subfigures (compare plots side-by-side)
+\usepackage{subcaption}
+
+% Include images
+\usepackage{graphicx}
+
+% Better tables (clean formatting + number alignment)
+\usepackage{tabularray}
+\UseTblrLibrary{booktabs, siunitx}
+
+% Typography improvements (spacing, kerning)
+\usepackage{microtype}
+
+% Bibliography system (modern replacement for BibTeX)
+\usepackage[backend=biber]{biblatex}
+\addbibresource{../../../latex/references.bib}
+
+% Clickable links + PDF metadata
+\usepackage[
+  unicode,
+  pdfusetitle,
+  pdfcreator={},
+  pdfproducer={},
+]{hyperref}
+
+% Better PDF bookmarks
+\usepackage{bookmark}
+
+% Custom commands (needed for definitions below)
+\usepackage{expl3}
+\usepackage{xparse}
+
+% Upright e (useful for exp, softmax, etc.)
+\ExplSyntaxOn
+\NewDocumentCommand \E {} {\symup{e}}
+\ExplSyntaxOff
+
+% Upright differential d (clean integrals)
+\ExplSyntaxOn
+\NewDocumentCommand \dif {m} {\mathinner{\symup{d} #1}}
+\ExplSyntaxOff
+
+% Vector command (bold vectors in math mode)
+\ExplSyntaxOn
+\let\vaccent=\v
+\RenewDocumentCommand \v {}{
+  \TextOrMath{\vaccent}{\symbf}
+}
+\ExplSyntaxOff
+
+% Better spacing for scalable brackets
+\usepackage{mleftright}
+
+% Shortcuts for scalable brackets: \l( ... \r)
+\ExplSyntaxOn
+\let\ltext=\l
+\RenewDocumentCommand \l {}{\TextOrMath{\ltext}{\mleft}}
+\let\raccent=\r
+\RenewDocumentCommand \r {}{\TextOrMath{\raccent}{\mright}}
+\ExplSyntaxOff
+
+% Absolute value and norm (auto-scaling with *)
+\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
+\DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+
+% Definition equality symbols
+\newcommand{\defeq}{\vcentcolon=}
+\newcommand{\eqdef}{=\vcentcolon}
+
+% No paragraph indent (clean report style)
+\setlength{\parindent}{0pt}

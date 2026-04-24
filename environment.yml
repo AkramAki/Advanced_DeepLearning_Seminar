@@ -1,0 +1,21 @@
+name: deepLearning
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.4
+  - numpy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - jupyterlab
+  - tqdm
+  - pip
+  - pip:
+      - transformers
+      - datasets
