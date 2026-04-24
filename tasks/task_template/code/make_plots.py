@@ -1,12 +1,14 @@
 from common.setup_plotting import setup_matplotlib, get_figure_dir
+from common.data_downloader import download_data
 
 import numpy as np
 
 
 def main():
-    setup_matplotlib()
+    setup_matplotlib()        # configure matplotlib first
+    import matplotlib.pyplot as plt   # THEN import pyplot
 
-    import matplotlib.pyplot as plt
+    # download_data("task_xx") # Uncomment this line to download the data or check if it exists for tasks_xx
 
     fig_dir = get_figure_dir(__file__)
 
