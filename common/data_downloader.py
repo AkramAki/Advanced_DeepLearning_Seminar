@@ -9,7 +9,7 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 # -----------------------------
 # Task-specific download logic
 # -----------------------------
-def _task_01() -> None:
+def _task_01():
     dataset_dir = DATA_DIR / "task_01"
     dataset_dir.mkdir(parents=True, exist_ok=True)
 
@@ -21,7 +21,7 @@ def _task_01() -> None:
     # check if already downloaded
     if all((dataset_dir / f).exists() for f in required_files):
         print("task_01 data already available.")
-        return
+        return dataset_dir
 
     print("Downloading data for task_01...")
 
@@ -34,6 +34,7 @@ def _task_01() -> None:
         )
 
     print("Download complete.")
+    return dataset_dir
 
 
 # -----------------------------
@@ -49,9 +50,9 @@ TASKS = {
 # -----------------------------
 # Public interface
 # -----------------------------
-def download_data(task_name: str) -> None:
+def download_data(task_name: str):
     if task_name not in TASKS:
         available = ", ".join(TASKS)
         raise ValueError(f"Unknown task '{task_name}'. Available: {available}")
 
-    TASKS[task_name]()
+    return TASKS[task_name]()

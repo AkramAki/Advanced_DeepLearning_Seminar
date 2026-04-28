@@ -1,5 +1,7 @@
 # Custom Ignores here
 data/
+**/models/*
+!**/models/.gitkeep
 
 ###### Ignores that I always use
 
