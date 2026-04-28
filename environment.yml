@@ -15,9 +15,11 @@ dependencies:
   - matplotlib
   - jupyterlab
   - tqdm
+  - graphviz
+  - transformers
+  - datasets
+  - nbstripout
   - pip
   - pip:
-      - transformers
-      - nbstripout
-      - datasets
+      - torchview
       - -e .

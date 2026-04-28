@@ -1,6 +1,6 @@
 \input{../../../latex/header.tex}
 
-\title{Task 01: Astronomy CNN with PyTorch}
+\title{Task 01: CNN Regression on Stellar Spectra}
 \author{Akram Aki}
 \date{\today}
 
@@ -8,8 +8,154 @@
 
 \maketitle
 
+\section{Introduction}
 
+The goal of this task was to predict stellar parameters directly from one-dimensional stellar spectra using a convolutional neural network (CNN). The model was trained as a multi-output regression problem, where the network predicts the following three labels:
 
+\begin{itemize}
+    \item effective temperature $T_{\mathrm{eff}}$
+    \item surface gravity $\log g$
+    \item metallicity $[\mathrm{Fe}/\mathrm{H}]$
+\end{itemize}
+
+The workflow consisted of loading and preprocessing the spectra, normalizing both inputs and labels, training a one-dimensional CNN, and evaluating the predictions on a held-out test set.
+
+\section{Dataset and Preprocessing}
+
+The dataset consists of one-dimensional stellar spectra stored in \texttt{spectra.npy} together with their corresponding labels stored in \texttt{labels.npy}. Each spectrum contains flux measurements sampled over wavelength bins.
+
+Before training, the spectra were first transformed using a logarithmic scaling and then standardized spectrum-wise using the mean and standard deviation. The normalization procedure therefore consisted of two steps:
+
+\begin{equation*}
+X_{\log} = \log(X)
+\end{equation*}
+
+followed by
+
+\begin{equation*}
+X_{\mathrm{norm}} = \frac{X_{\log} - \mu}{\sigma}
+\end{equation*}
+
+where $\mu$ and $\sigma$ are the mean and standard deviation of each spectrum after logarithmic scaling.
+
+The target labels were also standardized using z-score normalization:
+
+\begin{equation*}
+y_{\mathrm{norm}} = \frac{y - \bar{y}}{s_y}
+\end{equation*}
+
+This keeps the labels in a comparable numerical range and prevents parameters with larger values from dominating the loss function during training.
+
+The dataset was divided into training, validation, and test subsets. The training set was used for optimization, the validation set for monitoring generalization during training, and the test set for final evaluation.
+
+\section{Exploring the Data}
+
+\subsection{Example Spectra}
+
+\autoref{fig:spectra_raw} shows several example spectra before normalization. The spectra share very similar overall shapes, while small differences in the absorption features encode information about the stellar parameters.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../build/example_spectra.pdf}
+    \caption{Example stellar spectra before normalization.}
+    \label{fig:spectra_raw}
+\end{figure}
+
+\autoref{fig:spectra_normed} shows the same spectra after logarithmic scaling and standardization. The spectra retain their overall shapes after normalization, which is desirable, while the values above each plot show that the transformed spectra now occupy a more consistent numerical range. This makes the data easier for the CNN to process during training.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../build/example_spectra_normed.pdf}
+    \caption{Example stellar spectra after normalization.}
+    \label{fig:spectra_normed}
+\end{figure}
+
+\subsection{Label Distributions}
+
+The distributions of the stellar labels are shown in \autoref{fig:label_distributions}. The overall distributions remain very similar before and after normalization, which is expected since normalization should preserve the general structure of the data. However, the normalized labels are shifted into a more suitable numerical range, making them easier to use during optimization.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{../build/label_distributions.pdf}
+    \caption{Distributions of the stellar labels before and after normalization.}
+    \label{fig:label_distributions}
+\end{figure}
+
+\section{CNN Model}
+
+A one-dimensional convolutional neural network was used to predict the stellar parameters from the spectra. The model consists of three convolutional blocks followed by a fully connected regression head. Each convolutional block uses a one-dimensional convolution with kernel size $9$, ReLU activation, and max pooling with kernel size $4$. The number of channels increases from $16$ to $32$ and then to $64$.
+
+\begin{figure}[H]
+    \centering
+    \fbox{%
+    \begin{minipage}{0.95\textwidth}
+        \centering
+        \texttt{Input spectrum} $\rightarrow$
+        \texttt{Conv1D(1,16,9)} $\rightarrow$ \texttt{ReLU} $\rightarrow$ \texttt{MaxPool(4)}
+        \\[0.4em]
+        $\rightarrow$ \texttt{Conv1D(16,32,9)} $\rightarrow$ \texttt{ReLU} $\rightarrow$ \texttt{MaxPool(4)}
+        \\[0.4em]
+        $\rightarrow$ \texttt{Conv1D(32,64,9)} $\rightarrow$ \texttt{ReLU} $\rightarrow$ \texttt{MaxPool(4)}
+        \\[0.4em]
+        $\rightarrow$ \texttt{Flatten} $\rightarrow$ \texttt{Linear(128)} $\rightarrow$ \texttt{ReLU} $\rightarrow$ \texttt{Linear(3)}
+    \end{minipage}}
+    \caption{Schematic visualization of the CNN architecture. The final output contains the three predicted stellar labels.}
+    \label{fig:cnn_architecture}
+\end{figure}
+
+The convolutional layers extract local spectral features such as absorption lines, while the pooling layers reduce the dimensionality of the spectra and allow the network to learn more abstract representations.
+
+The model was trained using the Adam optimizer with mean squared error (MSE) loss.
+
+\section{Training Results}
+
+\autoref{fig:loss_curves} shows the evolution of the training and validation losses during optimization.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{../build/loss_curves.pdf}
+    \caption{Training and validation loss curves.}
+    \label{fig:loss_curves}
+\end{figure}
+
+Both the training and validation loss decreased steadily throughout training, indicating that the CNN successfully learned meaningful patterns from the spectra. The validation loss generally followed the training loss closely, suggesting that the model generalized reasonably well to unseen data.
+
+A small separation between the two curves is visible at later epochs, which may indicate mild overfitting. However, the absence of a strong divergence suggests that the overall generalization performance remained stable.
+
+\section{Model Evaluation}
+
+The trained CNN was evaluated on the test set by comparing the predicted stellar parameters with their true values.
+
+\autoref{fig:pred_vs_true} shows the predicted-versus-true scatter plots for all three labels. The corresponding evaluation metrics, including the coefficient of determination $R^2$, are displayed directly on the plots and provide a quantitative measure of the regression performance for each parameter.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../build/predictions_vs_true.pdf}
+    \caption{Predicted versus true stellar parameters for the test set.}
+    \label{fig:pred_vs_true}
+\end{figure}
+
+Overall, most predictions lie close to the one-to-one diagonal relation, indicating good agreement between the CNN predictions and the true stellar parameters.
+
+The easiest parameter to predict is the label whose scatter points cluster most tightly around the diagonal. In contrast, the hardest parameter to predict is associated with the largest spread and strongest deviations from the diagonal relation. Larger deviations are also expected near the extremes of the parameter ranges, where fewer training examples may be available.
+
+\section{Possible Improvements}
+
+Several improvements could potentially increase the predictive performance of the model:
+
+\begin{itemize}
+    \item A deeper CNN architecture could extract more complex spectral features.
+    \item Adding dropout layers may reduce overfitting and improve generalization.
+    \item More advanced normalization or continuum-correction methods could improve preprocessing robustness.
+    \item Training for additional epochs may improve convergence if validation loss continues decreasing.
+    \item Learning-rate tuning or scheduling could improve optimization stability and final accuracy.
+\end{itemize}
+
+\section{Conclusion}
+
+A one-dimensional convolutional neural network was successfully applied to the regression problem of predicting stellar parameters from spectra. The preprocessing and normalization steps stabilized the training process, and both training and validation losses decreased consistently during optimization.
+
+The predicted-versus-true comparisons demonstrated that the CNN captured meaningful relationships between spectral features and stellar parameters, although some labels were predicted more accurately than others. Further architectural tuning and regularization could improve the predictive performance even further.
 
 \printbibliography
 
