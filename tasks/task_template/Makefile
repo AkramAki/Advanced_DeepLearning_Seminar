@@ -10,8 +10,9 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # figures (only rerun if script changes or files missing)
-build/figures.pdf: code/make_plots.py | $(BUILD_DIR)
-	PYTHONPATH=../.. MPLCONFIGDIR=$(BUILD_DIR) python code/make_plots.py 
+build/figures.pdf: # code/plot.py | $(BUILD_DIR)
+	echo "No automatic figure generation implemented yet. Please run the plotting script manually to generate the figures."
+# PYTHONPATH=../.. MPLCONFIGDIR=$(BUILD_DIR) python code/plot.py 
 
 # report (reruns only if tex or figures changed)
 report/main.pdf: report/main.tex build/figures.pdf
