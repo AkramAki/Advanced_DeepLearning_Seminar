@@ -118,3 +118,10 @@ latex/references.bib
 
 and included automatically through the header.
 
+
+
+
+TODO:
+Change the example 00. 
+Include a way to run the notebooks through make?
+Refactor code after someone provides feedback and blesses me with their knowledge
