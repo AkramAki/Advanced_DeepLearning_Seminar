@@ -18,5 +18,6 @@ dependencies:
   - pip
   - pip:
       - transformers
+      - nbstripout
       - datasets
       - -e .
