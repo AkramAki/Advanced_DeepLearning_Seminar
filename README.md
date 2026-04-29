@@ -20,6 +20,15 @@ after that run
 nbstripout --install       
 ```
 
+### GPU Support
+
+- Linux (NVIDIA GPU / CUDA):  
+  Install CUDA support by updating the environment:
+
+```bash    
+  mamba env update -n deepLearning -f environment-linux.yml 
+```  
+
 ---
 
 ## Example Task
