@@ -1,0 +1,266 @@
+\input{../../../latex/header.tex}
+
+\title{Task 02: Uncertainty-Aware CNN Extension}
+\author{Akram Aki}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Uncertainty-Aware CNN Extension}
+
+This report section extends the previous GALAH spectra regression workflow. The data download, loading, preprocessing, normalization, 
+dataset class, dataloaders, and device setup were kept the same as in the previous task. In particular, the same normalized one-dimensional 
+stellar spectra were used as inputs, and the model still predicts the three stellar parameters 
+$T_{\mathrm{eff}}$, $\log g$, and $[\mathrm{Fe/H}]$. The main change is that the standard regression CNN was replaced by an uncertainty-aware 
+one-dimensional CNN.
+
+Instead of predicting only one value per stellar parameter, the network predicts both a mean value and an uncertainty. The output is split into
+\begin{equation*}
+    \mu \in \mathbb{R}^{B \times 3}
+    \qquad \text{and} \qquad
+    \log \sigma^2 \in \mathbb{R}^{B \times 3},
+\end{equation*}
+where $B$ is the batch size and the three columns correspond to $T_{\mathrm{eff}}$, $\log g$, and $[\mathrm{Fe/H}]$. 
+Predicting the logarithm of the variance is numerically more stable than predicting the variance directly. 
+It also guarantees a positive variance after exponentiation,
+\begin{equation*}
+    \sigma^2 = \exp(\log \sigma^2).
+\end{equation*}
+
+
+\section{Gaussian Negative Log-Likelihood Loss}
+
+The model was trained with a Gaussian negative log-likelihood loss. 
+For each target value $y$, predicted mean $\mu$, and predicted log variance $\log \sigma^2$, the loss is
+\begin{equation*}
+    \mathcal{L} = \frac{1}{2} \left( \log \sigma^2 + \frac{(y-\mu)^2}{\exp(\log \sigma^2)} \right),
+\end{equation*}
+followed by averaging over the batch and the three output parameters:
+\begin{equation*}
+    \mathcal{L}_{\mathrm{final}} = \mathrm{mean}(\mathcal{L}).
+\end{equation*}
+
+This loss penalizes inaccurate predictions through the squared residual term. At the same time, it prevents the model from simply predicting very 
+large uncertainties, because the $\log \sigma^2$ term increases when the predicted variance becomes too large. 
+Therefore, the model must learn both accurate mean predictions and meaningful uncertainty estimates.
+
+\section{Model Configurations and Hyperparameter Sweep}
+
+Several uncertainty-aware CNN configurations were trained as a small controlled hyperparameter optimization. The goal was not to perform a large automated 
+search, but to compare a limited number of reasonable CNN configurations and select a model with good prediction performance and 
+well-calibrated uncertainties. Calibration was evaluated especially through the pull distributions.
+
+The exact model configurations are provided in the appendix in code form. The experiments should be reproducible from the accompanying GitHub repository, 
+using the provided model configurations. As in the previous report, the GitHub repository is publicly available at:
+\begin{center}
+    \url{https://github.com/AkramAki/Advanced_DeepLearning_Seminar}
+\end{center}
+
+Since this report corresponds to the state of the work on 4 May 2026, the repository version or commit from 4 May 2026 should be used for reproducibility 
+if later changes are made.
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{lcc}
+        \toprule
+        Run name & Best validation loss & Best epoch \\
+        \midrule
+        \texttt{k3\_c16-32-64\_drop0.0\_bn} & -1.388008 & 37 \\
+        \texttt{k9\_c16-32-64\_1conv\_drop0.2\_no\_bn} & -1.356892 & 29 \\
+        \texttt{k3\_c16-32-64\_drop0.1\_bn} & -1.214014 & 31 \\
+        \texttt{k5\_c16-32-64\_drop0.1\_bn} & -1.139896 & 16 \\
+        \texttt{k3\_c32-64-128\_drop0.1\_bn} & -1.112192 & 17 \\
+        \texttt{k3\_c16-32-64-128\_drop0.1\_pool32\_bn} & -1.058081 & 23 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Summary of the uncertainty-aware CNN model configurations. The full configurations are listed in the appendix.}
+    \label{tab:model_sweep}
+\end{table}
+
+
+\section{Results}
+
+\autoref{fig:loss_curves} shows the Gaussian negative log-likelihood loss during training. 
+The plot contains the training and validation losses as a function of epoch, together with the test loss and the 
+epoch of the best checkpoint. The validation curve was used to select the best model checkpoint. Overall, the loss curves show whether the 
+uncertainty-aware model converged stably and whether the validation loss followed the training loss without strong divergence.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{../build/loss_curves.pdf}
+    \caption{Training and validation Gaussian NLL loss curves. The test loss and best checkpoint epoch are shown in the figure.}
+    \label{fig:loss_curves}
+\end{figure}
+
+The predicted-versus-true comparison is shown in \autoref{fig:predictions}. 
+The model predicts the mean stellar parameters, while the predicted uncertainties are shown as error bars. 
+Most points are expected to lie close to the one-to-one relation if the mean predictions are accurate. The error bars provide additional 
+information about the model's confidence in each prediction. Compared with a standard regression CNN, this is a more informative output 
+because the model does not only return a point estimate, but also an uncertainty estimate for each stellar parameter.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{../build/predictions_vs_true_with_uncertainty.pdf}
+    \caption{Predicted versus true stellar parameters on the test set. The error bars show the predicted uncertainties.}
+    \label{fig:predictions}
+\end{figure}
+
+The uncertainty calibration was evaluated using pull distributions, shown in \autoref{fig:pulls}. The pull is defined as
+\begin{equation*}
+    \mathrm{pull} = \frac{\mathrm{truth} - \mathrm{prediction}}{\sigma}
+\end{equation*}
+where $\sigma$ is the predicted standard deviation. For a well-calibrated uncertainty model, the pull distribution should have a mean close to zero and a standard deviation close to one. A shifted pull distribution indicates bias in the predictions, while a width different from one indicates uncertainty miscalibration.
+
+\begin{figure}[h]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.1\textwidth]{../build/pull_distributions.pdf}%
+    }
+    \caption{Pull distributions for $T_{\mathrm{eff}}$, $\log g$, and $[\mathrm{Fe/H}]$. 
+    A well-calibrated model should have pull mean close to zero and pull standard deviation close to one.}
+    \label{fig:pulls}
+\end{figure}
+
+The final pull statistics are summarized in \autoref{tab:pull_results}. 
+The $T_{\mathrm{eff}}$ pull distribution has a mean of $-0.004$ and a standard deviation of $1.011$, which is very close to the 
+ideal values of zero and one. This indicates that the $T_{\mathrm{eff}}$ uncertainty estimates are very well calibrated.
+
+For $\log g$, the pull mean is $-0.093$ and the pull standard deviation is $1.095$. The small negative mean indicates a slight bias, while the 
+width larger than one means that the model is slightly overconfident for this parameter. In other words, the predicted uncertainties 
+for $\log g$ are slightly too small compared with the actual residuals.
+
+For $[\mathrm{Fe/H}]$, the pull mean is $-0.017$ and the pull standard deviation is $0.903$. The mean is close to zero, so there is little bias. 
+However, the width is smaller than one, indicating that the model is slightly underconfident for metallicity, meaning that the predicted uncertainties 
+are somewhat larger than necessary.
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{lcc}
+        \toprule
+        Parameter & Pull mean & Pull standard deviation \\
+        \midrule
+        $T_{\mathrm{eff}}$ & $-0.004$ & $1.011$ \\
+        $\log g$ & $-0.093$ & $1.095$ \\
+        $[\mathrm{Fe/H}]$ & $-0.017$ & $0.903$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Final pull statistics for the uncertainty-aware CNN on the test set.}
+    \label{tab:pull_results}
+\end{table}
+
+Overall, the uncertainty-aware CNN produces reasonably well-calibrated uncertainty estimates. 
+The best calibrated parameter is $T_{\mathrm{eff}}$, whose pull distribution is almost ideal. The $\log g$ uncertainties are slightly overconfident, 
+while the $[\mathrm{Fe/H}]$ uncertainties are slightly underconfident. Nevertheless, all three pull distributions are close to the desired behavior, 
+showing that the Gaussian NLL training objective successfully encouraged the model to learn useful predictive uncertainties in addition to accurate 
+mean predictions.
+
+\section{Conclusion}
+
+This extension replaced the standard CNN regression model with an uncertainty-aware CNN that predicts both mean stellar parameters and log variances. 
+The same data pipeline as in the previous report was used, so the main methodological difference was the model output and the Gaussian negative log-likelihood 
+loss. The small hyperparameter sweep allowed several CNN configurations to be compared in a controlled way. The final model achieved reasonable 
+uncertainty calibration, with very good calibration for $T_{\mathrm{eff}}$, slight overconfidence for $\log g$, and slight underconfidence for 
+$[\mathrm{Fe/H}]$.
+
+\printbibliography
+
+\appendix
+
+\section{Model Configurations}
+\label{app:model_configs}
+
+The uncertainty-aware CNN models used in the sweep were defined by the following configurations:
+
+{\footnotesize
+\begin{verbatim}
+model_configs = [
+{
+"run_name": "k3_c16-32-64_drop0.1_bn",
+"channels": (16, 32, 64), "kernel_size": 3,
+"convs_per_block": 2, "dropout": 0.1,
+"adaptive_pool_length": 64, "hidden_dim": 128,
+"use_batchnorm": True,
+},
+{
+"run_name": "k3_c16-32-64_drop0.0_bn",
+"channels": (16, 32, 64), "kernel_size": 3,
+"convs_per_block": 2, "dropout": 0.0,
+"adaptive_pool_length": 64, "hidden_dim": 128,
+"use_batchnorm": True,
+},
+{
+"run_name": "k5_c16-32-64_drop0.1_bn",
+"channels": (16, 32, 64), "kernel_size": 5,
+"convs_per_block": 2, "dropout": 0.1,
+"adaptive_pool_length": 64, "hidden_dim": 128,
+"use_batchnorm": True,
+},
+{
+"run_name": "k3_c32-64-128_drop0.1_bn",
+"channels": (32, 64, 128), "kernel_size": 3,
+"convs_per_block": 2, "dropout": 0.1,
+"adaptive_pool_length": 64, "hidden_dim": 128,
+"use_batchnorm": True,
+},
+{
+"run_name": "k3_c16-32-64-128_drop0.1_pool32_bn",
+"channels": (16, 32, 64, 128), "kernel_size": 3,
+"convs_per_block": 2, "dropout": 0.1,
+"adaptive_pool_length": 32, "hidden_dim": 128,
+"use_batchnorm": True,
+},
+{
+"run_name": "k9_c16-32-64_1conv_drop0.2_no_bn",
+"channels": (16, 32, 64), "kernel_size": 9,
+"convs_per_block": 1, "dropout": 0.2,
+"adaptive_pool_length": 64, "hidden_dim": 128,
+"use_batchnorm": False,
+},
+]
+\end{verbatim}
+}
+
+\section{Uncertainty-Aware CNN Architecture}
+\label{app:model_architecture}
+
+The model is a configurable one-dimensional CNN with convolutional blocks, adaptive average pooling, a shared fully connected head, and two output heads. One head predicts the mean stellar parameters, while the second predicts the corresponding log variances.
+
+Each convolutional block applies one or more 1D convolutions, optional batch normalization, ReLU activations, and max pooling. The number of channels, kernel size, number of convolutions per block, dropout rate, and adaptive pooling length are set by the configuration.
+
+The general structure is
+\begin{equation*}
+    x \rightarrow
+    \mathrm{CNN\ Blocks} \rightarrow
+    \mathrm{AdaptiveAvgPool1d} \rightarrow
+    \mathrm{Flatten} \rightarrow
+    \mathrm{Shared\ Head} \rightarrow
+    (\mu, \log \sigma^2).
+\end{equation*}
+
+The shared head maps the extracted spectral features to a hidden representation,
+\begin{equation*}
+    h = \mathrm{Dropout}\left(\mathrm{ReLU}\left(W_{\mathrm{shared}} f + b_{\mathrm{shared}}\right)\right),
+\end{equation*}
+where $f$ is the flattened feature vector after convolution and pooling.
+
+The two output heads then predict
+\begin{equation*}
+    \mu = W_{\mu}h + b_{\mu},
+\end{equation*}
+\begin{equation*}
+    \log \sigma^2 = W_{\log \sigma^2}h + b_{\log \sigma^2}.
+\end{equation*}
+
+For numerical stability, the predicted log variance is clamped:
+\begin{equation*}
+    \log \sigma^2 = \mathrm{clamp} \left( \log \sigma^2, -10, 10 \right).
+\end{equation*}
+
+The log-variance head was initialized with zero weights and bias, giving an initial log variance close to zero, i.e. variance close to one in normalized label space. The forward pass returns
+\begin{equation*}
+    \mathrm{model}(x) = \left(\mu, \log \sigma^2\right).
+\end{equation*}
+
+\end{document}
