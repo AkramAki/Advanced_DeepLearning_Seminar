@@ -159,10 +159,15 @@ mean predictions.
 \section{Conclusion}
 
 This extension replaced the standard CNN regression model with an uncertainty-aware CNN that predicts both mean stellar parameters and log variances. 
-The same data pipeline as in the previous report was used, so the main methodological difference was the model output and the Gaussian negative log-likelihood 
-loss. The small hyperparameter sweep allowed several CNN configurations to be compared in a controlled way. The final model achieved reasonable 
-uncertainty calibration, with very good calibration for $T_{\mathrm{eff}}$, slight overconfidence for $\log g$, and slight underconfidence for 
-$[\mathrm{Fe/H}]$.
+The same data pipeline as in the previous report was used, so the main methodological difference was the model output and the Gaussian negative 
+log-likelihood loss. A small hyperparameter sweep was used to compare several CNN configurations and select a model with good predictive performance 
+and well-calibrated uncertainties.
+
+The uncertainty quality was quantified using pull distributions, where an ideal model should have pull mean close to zero and pull standard deviation 
+close to one. The final model achieved pull statistics close to this ideal for all three parameters. The best calibrated parameter was 
+$T_{\mathrm{eff}}$, with a pull mean of $-0.004$ and width of $1.011$. The $\log g$ uncertainties were slightly overconfident, while the 
+$[\mathrm{Fe/H}]$ uncertainties were slightly underconfident. Overall, the pull results show that the Gaussian NLL objective allowed the model to 
+learn meaningful predictive uncertainties in addition to the mean stellar parameter estimates.
 
 \printbibliography
 
