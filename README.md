@@ -17,8 +17,10 @@ mamba activate deepLearning
 
 after that run 
 ```bash
+pip install git+https://github.com/thoglu/jammy_flows.git --no-deps
 nbstripout --install       
 ```
+The pip install is relevant for task #
 
 ### GPU Support
 
