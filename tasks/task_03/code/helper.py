@@ -349,8 +349,8 @@ def plot_uncertainty_vs_error(
         metrics_text = (
             f"Median $\\sigma$: {median_sigma:.4f}\n"
             f"Median $|\\Delta|$: {median_abs_error:.4f}\n"
-            f"Within $1\\sigma$: {100 * frac_within_1sigma:.1f}%\n"
-            f"Within $2\\sigma$: {100 * frac_within_2sigma:.1f}%"
+            f"Within $1\\sigma$: {100 * frac_within_1sigma:.1f}\\%\n"
+            f"Within $2\\sigma$: {100 * frac_within_2sigma:.1f}\\%"
         )
         ax.text(
             0.05,
@@ -549,6 +549,7 @@ def run_prediction_diagnostics(
     make_residual_distributions=True,
     show=True,
     close=False,
+    figsize=(6, 11),
 ):
     """
     Main convenience function.
@@ -608,6 +609,7 @@ def run_prediction_diagnostics(
             latex_names=latex_names,
             show=show,
             close=close,
+            figsize=figsize,
         )
 
         saved_paths["predictions_vs_true"] = path
@@ -622,6 +624,7 @@ def run_prediction_diagnostics(
             latex_names=latex_names,
             show=show,
             close=close,
+            figsize=figsize,
         )
 
         saved_paths["uncertainty_vs_error"] = path
@@ -635,6 +638,7 @@ def run_prediction_diagnostics(
             latex_names=latex_names,
             show=show,
             close=close,
+            figsize=figsize,
         )
 
         saved_paths["residual_distributions"] = path

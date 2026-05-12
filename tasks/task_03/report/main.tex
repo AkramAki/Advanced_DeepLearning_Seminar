@@ -1,16 +1,194 @@
 \input{../../../latex/header.tex}
+\usepackage{rotating}
 
-\title{Task 00: Example Workflow}
+\title{Task 03: Normalizing Flows}
 \author{Akram Aki}
 \date{\today}
+
+\newcommand{\maybeincludegraphics}[2][]{%
+    \IfFileExists{#2}{%
+        \includegraphics[#1]{#2}%
+    }{%
+        \fbox{\parbox{0.92\linewidth}{\centering Missing figure: \texttt{#2}}}%
+    }%
+}
 
 \begin{document}
 
 \maketitle
 
+\section{Overview}
 
+For this task, I used the provided template for normalizing flows and trained my own conditional density models for stellar-parameter prediction from spectra. The goal was to predict the three labels $T_{\mathrm{eff}}$, $\log g$, and $[\mathrm{Fe}/\mathrm{H}]$, while also modelling predictive uncertainty instead of only producing point estimates.
 
+I compared three variants of the density model: a diagonal Gaussian, a full Gaussian, and a full normalizing flow. The diagonal Gaussian is the simplest model and assumes independent label uncertainties. The full Gaussian additionally models correlations between the predicted labels. The full flow is the most flexible model, since it can represent more complex conditional predictive densities.
 
+\section{Training Behaviour}
+
+\autoref{fig:loss-curves} shows the training and validation losses for the three models. All three models were trained with the same data split and evaluated using the same diagnostics, so the loss curves provide a direct comparison of the different density assumptions. The losses decrease during training and the validation curves remain close to the training curves, which indicates that the models learned useful predictive distributions without a strong sign of overfitting.
+
+\begin{figure}[ht]
+    \centering
+    \maybeincludegraphics[width=0.95\linewidth]{../build/loss_curves.pdf}
+    \caption{Training and validation loss curves for the diagonal Gaussian, full Gaussian, and full-flow models.}
+    \label{fig:loss-curves}
+\end{figure}
+
+\section{Prediction Results}
+
+For each model, I generated diagnostic plots comparing predicted and true labels on the test set. A small number of individual predictive-density 
+examples was also produced for inspection, but I do not include all of them here because they are mainly useful as spot checks and would make the report 
+unnecessarily long. Across the selected examples, the true values usually lie inside regions with high predicted density, showing that the models learned 
+meaningful uncertainty estimates around their predictions.
+
+For each model, I generated diagnostic plots comparing predicted and true labels on the test set. Selected individual predictive-density examples are discussed 
+later in \autoref{sec:pdf-visualisation}, where they provide a qualitative check of the learned distributions. Across these diagnostics, the true values 
+usually lie inside regions with high predicted density, showing that the models learned meaningful uncertainty estimates around their predictions.
+
+The prediction-versus-true plots in \autoref{fig:pred-true} show that all three models recover the main trends in the test data. The points are concentrated close to the ideal diagonal line, especially for $T_{\mathrm{eff}}$ and $[\mathrm{Fe}/\mathrm{H}]$. The $\log g$ predictions are somewhat more scattered, which suggests that this label is harder to infer from the spectra or has higher intrinsic uncertainty in the data.
+
+\begin{sidewaysfigure}[p!]
+    \centering
+    \begin{minipage}{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/diagonal_gaussian/predictions_vs_true_with_uncertainty.pdf}
+        \caption*{Diagonal Gaussian}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/full_gaussian/predictions_vs_true_with_uncertainty.pdf}
+        \caption*{Full Gaussian}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/full_flow/predictions_vs_true_with_uncertainty.pdf}
+        \caption*{Full Flow}
+    \end{minipage}
+    \caption{Predicted labels compared with true labels on the test set.}
+    \label{fig:pred-true}
+\end{sidewaysfigure}
+
+\section{Uncertainty and Residuals}
+
+The uncertainty-versus-error plots in \autoref{fig:uncertainty-error} compare the predicted uncertainty with the absolute prediction error. Ideally, samples with large errors should also have larger predicted uncertainty. The plots show this behaviour qualitatively, although the relation is not perfectly sharp. This means that the predicted uncertainty is informative, but not perfectly calibrated for every individual object.
+
+\begin{sidewaysfigure}[p!]
+    \centering
+    \begin{minipage}{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/diagonal_gaussian/uncertainty_vs_absolute_error.pdf}
+        \caption*{Diagonal Gaussian}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/full_gaussian/uncertainty_vs_absolute_error.pdf}
+        \caption*{Full Gaussian}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/full_flow/uncertainty_vs_absolute_error.pdf}
+        \caption*{Full Flow}
+    \end{minipage}
+    \caption{Predicted uncertainty compared with absolute prediction error.}
+    \label{fig:uncertainty-error}
+\end{sidewaysfigure}
+
+The residual distributions in \autoref{fig:residuals} are mostly centred around zero, indicating that the models do not show a strong systematic bias in the predictions. The width of the residual distributions differs between the labels, again suggesting that some stellar parameters are easier to predict than others. Overall, the residual plots are consistent with the prediction-versus-true plots: the models perform well on the main trends, with the remaining errors mainly appearing as scatter around the correct values.
+
+\begin{sidewaysfigure}[p!]
+    \centering
+    \begin{minipage}{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/diagonal_gaussian/residual_distributions.pdf}
+        \caption*{Diagonal Gaussian}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/full_gaussian/residual_distributions.pdf}
+        \caption*{Full Gaussian}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/full_flow/residual_distributions.pdf}
+        \caption*{Full Flow}
+    \end{minipage}
+    \caption{Residual distributions for the three predicted labels.}
+    \label{fig:residuals}
+\end{sidewaysfigure}
+
+\section{Visualisation of Predicted PDFs}
+\label{sec:pdf-visualisation}
+
+To qualitatively inspect the learned predictive distributions, I visualised selected predicted probability density functions for individual test examples. 
+These plots complement the earlier prediction, residual, and uncertainty diagnostics by showing the actual shape of the predictive density for specific objects.
+
+\autoref{fig:pdf_predictions_selected} compares representative examples from the diagonal Gaussian, full Gaussian, 
+and full-flow models. The plots show the density estimated from samples, a Gaussian approximation, and the true label value. This makes it possible to check whether 
+the predicted distribution is centred near the true value and whether the uncertainty estimate has a reasonable width. In each subfigure, the three rows correspond to 
+the three predicted labels: $T_{\mathrm{eff}}$, $\log g$, and $[\mathrm{Fe}/\mathrm{H}]$.
+
+\begin{figure}[ht]
+    \centering
+
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/diagonal_gaussian/pdf_prediction_star_2.png}
+        \caption{Diagonal Gaussian, example 2}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/full_flow/pdf_prediction_star_2.png}
+        \caption{Full flow, example 2}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/full_gaussian/pdf_prediction_star_2.png}
+        \caption{Full Gaussian, example 2}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/full_gaussian/pdf_prediction_star_1.png}
+        \caption{Full Gaussian, example 1}
+    \end{subfigure}
+
+    \vspace{0.5em}
+
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/full_gaussian/pdf_prediction_star_3.png}
+        \caption{Full Gaussian, example 3}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{../build/full_gaussian/pdf_prediction_star_4.png}
+        \caption{Full Gaussian, example 4}
+    \end{subfigure}
+
+    \caption{Selected predicted probability density functions for representative test examples. Grey histograms show densities estimated from samples, green curves show Gaussian approximations, and red vertical lines indicate the true label values. The examples compare how the different likelihood models represent uncertainty around their predictions.}
+    \label{fig:pdf_predictions_selected}
+\end{figure}
+
+Overall, the selected examples show that the models differ not only in their predicted central values, but also in the shape and spread of their uncertainty estimates. This is important for the task, since a good model should assign high probability to plausible target values while also expressing uncertainty when the prediction is less certain. The full Gaussian examples suggest that allowing a full covariance structure can produce more informative predictive PDFs than the diagonal Gaussian assumption, especially when the uncertainty is not axis-aligned.
+
+\section{Conclusion}
+
+The three normalizing-flow-based models all produced reasonable predictions for $T_{\mathrm{eff}}$, $\log g$, and $[\mathrm{Fe}/\mathrm{H}]$. The diagonal Gaussian already gives a useful baseline, while the full Gaussian and full flow allow richer uncertainty structures. The diagnostics show that the predictions are close to the true labels, the residuals are mostly centred around zero, and the uncertainty estimates broadly follow the magnitude of the prediction errors. The selected PDF visualisations further show that the models differ not only in their point predictions, but also in the shape and spread of their predictive distributions.
+
+The uncertainty quality was assessed mainly through diagnostic plots rather than through a dedicated scalar calibration metric. In particular, the predicted uncertainty versus absolute error plots provide a qualitative check of whether larger prediction errors are associated with larger predicted uncertainties. This gives useful evidence that the uncertainties are meaningful, but a more complete quantitative calibration analysis would require additional metrics, such as empirical coverage, test negative log-likelihood, calibration curves, or a correlation score between predicted uncertainty and absolute error.
+
+Overall, the results support using conditional density models for this task, since they provide both predictions and interpretable uncertainty estimates. The full Gaussian and full flow models are especially useful because they can represent more flexible predictive distributions than the diagonal Gaussian baseline.
 \printbibliography
 
 \end{document}
