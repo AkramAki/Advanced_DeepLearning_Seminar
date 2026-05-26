@@ -242,9 +242,22 @@ def train_model(
     finally:
         epoch_progress.close()
 
-    if verbose:
-        final_epoch = stopped_epoch if stopped_epoch is not None else num_epochs
+    # Keep the checkpoint model/optimizer at the best epoch, but always store
+    # the complete loss history from the full training run. This ensures that
+    # skip_training=True returns enough points to plot every completed epoch,
+    # not just the epochs up to the best validation result.
+    final_epoch = stopped_epoch if stopped_epoch is not None else len(
+        train_losses)
 
+    checkpoint = load_checkpoint(checkpoint_path, device=device)
+    checkpoint["train_losses"] = train_losses
+    checkpoint["val_losses"] = val_losses
+    checkpoint["completed_epoch"] = final_epoch
+    checkpoint["stopped_epoch"] = stopped_epoch
+    checkpoint["patience"] = patience
+    torch.save(checkpoint, checkpoint_path)
+
+    if verbose:
         tqdm.write(
             f"Training completed | "
             f"epochs={final_epoch}/{num_epochs} | "

@@ -1,0 +1,128 @@
+\input{../../../latex/header.tex}
+
+\title{Task 04: Graph Neural Network for 2D Neutrino Interaction Position Reconstruction}
+\author{Akram Aki}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+The goal of this task was to reconstruct the two-dimensional neutrino interaction position from measured Cherenkov light. 
+Each event consists of a variable-length set of detected photon hits, where each hit contains the detection time and detector position, and the target 
+is the true interaction coordinate $(x_{\mathrm{true}}, y_{\mathrm{true}})$.
+
+\section{Method}
+
+The input hit features and target coordinates were standardized using the mean and standard deviation computed on the training set. 
+The same normalization constants were applied to the validation and test sets, and final predictions were transformed back to the 
+original coordinate scale in $\mathrm{m}$.
+
+The reconstruction error was evaluated using the Euclidean distance
+\begin{equation*}
+    d_{\mathrm{err}} = \sqrt{ (x_{\mathrm{pred}} - x_{\mathrm{true}})^2 + (y_{\mathrm{pred}} - y_{\mathrm{true}})^2 }.
+\end{equation*}
+
+Each event was represented as a graph whose nodes are photon hits with normalized time and detector position features. 
+A Dynamic Edge Convolution GNN with two DynamicEdgeConv layers, global mean pooling, and a final MLP was used to predict the normalized interaction coordinates.
+
+The model was trained with mean squared error loss and the Adam optimizer for 30 epochs. The best checkpoint was selected using the validation loss, 
+with the selected checkpoint at epoch 15 and early stopping patience set to 6.
+
+\section{Results}
+
+\autoref{fig:loss-curves} shows the training and validation loss curves. The validation loss decreased during 
+training, and the best checkpoint was selected at epoch 15. The test loss shown in the plot is in normalized coordinate space, since the training objective 
+was computed on normalized labels.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../build/loss_curves.pdf}
+    \caption{Training and validation loss curves. The dashed horizontal line indicates the test loss, and the vertical dotted line indicates the selected best 
+    checkpoint epoch.}
+    \label{fig:loss-curves}
+\end{figure}
+
+\autoref{fig:pred-vs-true} compares the predicted and true interaction coordinates on the test set after transforming 
+the coordinates back to the original scale. The predictions follow the diagonal trend, indicating that the model learned the main structure of 
+the reconstruction task.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../build/pred_vs_true_x.pdf}
+        \caption{$x$-coordinate.}
+        \label{fig:pred-vs-true-x}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../build/pred_vs_true_y.pdf}
+        \caption{$y$-coordinate.}
+        \label{fig:pred-vs-true-y}
+    \end{subfigure}
+    \caption{Predicted and true interaction coordinates on the test set after transforming the labels back to the original coordinate scale in 
+    $\mathrm{m}$. The diagonal line indicates perfect reconstruction.}
+    \label{fig:pred-vs-true}
+\end{figure}
+
+The distribution of reconstruction errors is shown in \autoref{fig:error-hist}. Most events have 
+moderate errors, while the tail of the distribution corresponds to events with larger position reconstruction error.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../build/position_error_histogram.pdf}
+    \caption{Distribution of the Euclidean reconstruction error $d_{\mathrm{err}}$ on the test set in $\mathrm{m}$. The legend reports the mean, 
+    standard deviation, SEM, and median. Mean is the average reconstruction error, standard deviation describes the spread of event-wise errors, 
+    SEM is the standard error of the mean, and median is the central value of the error distribution.}
+    \label{fig:error-hist}
+\end{figure}
+
+\newpage
+
+\autoref{fig:error-2d} visualizes 300 randomly selected test events. True and predicted positions are connected by 
+lines whose color represents \(d_{\mathrm{err}}\), while the line width also varies slightly with the error. The detector positions are shown as well and were 
+determined by collecting the unique detector hit positions from the data. This plot suggests that reconstruction quality may depend on spatial position, 
+since errors appeared larger farther away from the detector region.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../build/reconstruction_error_2d_colored.pdf}
+    \caption{Two-dimensional reconstruction visualization for 300 randomly selected test events. 
+    True and predicted positions are connected by lines colored according to the Euclidean reconstruction error 
+    $d_{\mathrm{err}}$ in $\mathrm{m}$, as shown by the colorbar. The line width also varies slightly with the error, and detector positions are shown.}
+    \label{fig:error-2d}
+\end{figure}
+
+\newpage
+
+The spatial dependence of the reconstruction quality is studied more directly in \autoref{fig:error-heatmap}. 
+Test events were binned according to their true interaction position $(x_{\mathrm{true}}, y_{\mathrm{true}})$. For each bin, the color represents the 
+mean Euclidean reconstruction error, while the number inside the bin gives the standard deviation of the error values in that bin. 
+The heatmap confirms that the reconstruction quality varies with spatial position, with larger errors in some outer regions.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{../build/position_error_heatmap_mean_with_std.pdf}
+    \caption{Spatial dependence of reconstruction quality on the test set. Events are binned by true interaction position, 
+    the color gives the mean Euclidean reconstruction error in $\mathrm{m}$, and the number inside each bin gives the standard deviation of 
+    the error values in that bin. Detector positions are marked in the plot.}
+    \label{fig:error-heatmap}
+\end{figure}
+
+\section{Conclusion}
+
+The Dynamic Edge Convolution GNN was able to learn the reconstruction task and produced reasonable predictions on the test set. 
+The spatial plots show that the reconstruction performance is not uniform over the detector plane, with larger errors in some outer regions.
+
+As possible extensions, the GNN could be compared to baseline approaches such as a simple fully connected network using fixed summary features, 
+a point-cloud model, or a model based on handcrafted event-level quantities. Future work could also include fixing random seeds and documenting the exact 
+training configuration more carefully for reproducibility. All code used for preprocessing, training, evaluation, and plotting is available in the accompanying 
+\href{https://github.com/AkramAki/Advanced_DeepLearning_Seminar}{GitHub repository}.
+
+\printbibliography
+
+\end{document}
