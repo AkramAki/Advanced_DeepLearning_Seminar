@@ -1,6 +1,0 @@
-name: deepLearning
-channels:
-  - pytorch
-  - nvidia
-dependencies:
-  - pytorch-cuda=12.4

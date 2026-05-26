@@ -1,17 +1,17 @@
 name: deepLearning
 channels:
   - pytorch
-  - nvidia
   - conda-forge
 dependencies:
   - python=3.11
-  - pytorch
+  - pytorch=2.4.*
   - torchvision
   - torchaudio
   - numpy
   - pandas
   - scikit-learn
   - matplotlib
+  - awkward
   - jupyterlab
   - ipywidgets
   - jupyterlab_widgets
@@ -22,5 +22,6 @@ dependencies:
   - nbstripout
   - pip
   - pip:
+      - torch_geometric
       - torchview
       - -e .

@@ -15,12 +15,74 @@ mamba env create -f environment.yml
 mamba activate deepLearning
 ```
 
-after that run 
+Install additional packages and notebook cleanup hooks:
+
 ```bash
 pip install git+https://github.com/thoglu/jammy_flows.git --no-deps
-nbstripout --install       
+nbstripout --install
 ```
-The pip install is relevant for task #
+
+`jammy_flows` is required for Task 03. `nbstripout` removes notebook outputs before committing, keeping notebooks smaller and cleaner in version control.
+
+### Additional setup for Linux with CUDA
+
+On Linux systems with CUDA support, also install the CUDA runtime dependencies:
+
+```bash
+mamba install -c pytorch -c nvidia pytorch-cuda=12.4
+```
+
+Use this expanded version:
+
+### Additional setup for Task 04
+
+The base environment installs `torch_geometric`. However, Task 04 uses `DynamicEdgeConv`, which additionally requires the compiled PyTorch Geometric extension `torch_cluster`.
+
+Before installing `torch_cluster`, check your PyTorch and CUDA versions:
+
+```bash
+python -c "import torch; print('PyTorch version:', torch.__version__); print('CUDA version used by PyTorch:', torch.version.cuda); print('CUDA available:', torch.cuda.is_available())"
+```
+
+Example output on Linux with CUDA support:
+
+```text
+PyTorch version: 2.4.0
+CUDA version used by PyTorch: 12.4
+CUDA available: True
+```
+
+For this setup, install the matching `torch_cluster` wheel:
+
+```bash
+pip install torch_cluster -f https://data.pyg.org/whl/torch-2.4.0+cu124.html
+```
+
+The important part is that the wheel URL matches your PyTorch and CUDA versions:
+
+```text
+PyTorch 2.4.0 + CUDA 12.4 -> torch-2.4.0+cu124
+```
+
+On macOS, CUDA is not available. The version check will usually show:
+
+```text
+CUDA version used by PyTorch: None
+CUDA available: False
+```
+
+In that case, install the CPU version:
+
+```bash
+pip install torch_cluster -f https://data.pyg.org/whl/torch-2.4.0+cpu.html
+```
+
+After installation, test that `DynamicEdgeConv` and `torch_cluster` are available:
+
+```bash
+python -c "from torch_geometric.nn import DynamicEdgeConv; import torch_cluster; print('DynamicEdgeConv and torch_cluster available')"
+```
+
 
 ### GPU Support
 
