@@ -1,5 +1,6 @@
 # Custom Ignores here
 data/
+dataset/
 **/models/*
 !**/models/.gitkeep
 
