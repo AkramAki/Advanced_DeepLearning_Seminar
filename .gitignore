@@ -1,6 +1,7 @@
 # Custom Ignores here
 data/
 dataset/
+**/Task.md
 **/models/*
 !**/models/.gitkeep
 
