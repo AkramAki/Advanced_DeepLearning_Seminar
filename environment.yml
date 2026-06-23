@@ -23,6 +23,7 @@ dependencies:
   - nbstripout
   - pip
   - pip:
+      - denoising-diffusion-pytorch
       - torch_geometric
       - torchview
       - -e .
