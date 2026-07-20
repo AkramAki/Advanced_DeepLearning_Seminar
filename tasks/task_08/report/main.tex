@@ -1,0 +1,170 @@
+\input{../../../latex/header.tex}
+
+\title{Task 08: Transformer Reconstruction of IceCube Interaction Positions}
+\author{Akram Aki}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+The goal of this task was to reconstruct the two-dimensional neutrino interaction position from IceCube hit sequences.
+Each event is represented by a variable-length list of measured Cherenkov-light hits.
+For every hit, the available input features are the detection time and the detector-unit position,
+\[
+    (t, x, y),
+\]
+and the regression target is the true interaction position
+\[
+    (x_{\mathrm{pos}}, y_{\mathrm{pos}}).
+\]
+The main technical difficulty is that different events contain different numbers of hits.
+Therefore, the implementation uses a custom batching function, padding, and a padding mask before applying a Transformer encoder.
+
+\section{Method}
+
+The dataset was loaded from the local IceCube 2D parquet files.
+The train, validation, and test splits each contained \(10001\) events.
+Although the split sizes are identical, the files are distinct; for example, the first target coordinate differs between the three splits.
+The training events contained between \(1\) and \(68\) hits, with a median of \(19\) hits and a mean of \(19.89\) hits.
+\autoref{fig:dataset-overview} shows the hit-count distribution, the one-dimensional target-coordinate distributions, and the two-dimensional target density.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{../build/dataset_overview.pdf}
+    \caption{Overview of the IceCube data used in Task 08. The upper-left panel shows the number of hits per event for the three splits. The remaining panels show the training target distributions in \(x\), in \(y\), and in the two-dimensional interaction plane.}
+    \label{fig:dataset-overview}
+\end{figure}
+\FloatBarrier
+
+All input features and target coordinates were standardized using statistics from the training split only.
+The same constants were then applied to the validation and test splits.
+This avoids leaking information from validation or test data into the training procedure.
+The model was trained in normalized coordinate space, while final metrics were computed after transforming predictions and labels back to meters.
+
+The custom collate function converts each event from the Awkward-array layout \([3, N_{\mathrm{hits}}]\) to the PyTorch sequence layout \([N_{\mathrm{hits}}, 3]\).
+Within one batch, all hit tensors are concatenated and the original sequence lengths are stored.
+Inside the model, these lengths are used to split the hits back into events, pad the events to the longest sequence in the batch, and construct a boolean padding mask.
+The mask is passed to \texttt{nn.TransformerEncoder} so that padded positions do not contribute to attention.
+After the encoder, masked mean pooling averages only over real hits and produces one event-level vector.
+
+The Transformer architecture is summarized in \autoref{tab:model-config}.
+It first projects the three hit features to a hidden dimension of \(64\), applies two Transformer encoder layers with four attention heads, and maps the pooled event representation to the two target coordinates.
+The model has \(71618\) trainable parameters.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{ll}
+        \toprule
+        Quantity & Value \\
+        \midrule
+        Input features per hit & \(t, x, y\) \\
+        Targets & \(x_{\mathrm{pos}}, y_{\mathrm{pos}}\) \\
+        Batch size & 64 \\
+        Maximum epochs & 50 \\
+        Early-stopping patience & 6 \\
+        Hidden dimension & 64 \\
+        Attention heads & 4 \\
+        Transformer encoder layers & 2 \\
+        Feed-forward dimension & 128 \\
+        Dropout & 0.05 \\
+        Optimizer & AdamW \\
+        Learning rate & \(10^{-3}\) \\
+        Weight decay & \(10^{-4}\) \\
+        Loss & Mean squared error \\
+        Trainable parameters & 71618 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Transformer and training configuration used for the Task 08 notebook run.}
+    \label{tab:model-config}
+\end{table}
+
+\section{Results}
+
+\autoref{fig:loss-curves} shows the training and validation losses in normalized coordinate space.
+Training was configured for up to \(50\) epochs, but early stopping stopped the run after epoch \(35\).
+The best validation checkpoint was selected at epoch \(29\), where the validation MSE reached \(0.0805\).
+The final test MSE in normalized space was \(0.0774\).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{../build/transformer_loss_curves.pdf}
+    \caption{Training and validation loss curves for the Transformer encoder. The vertical line marks the best validation checkpoint, which was used for the final test evaluation.}
+    \label{fig:loss-curves}
+\end{figure}
+\FloatBarrier
+
+After denormalizing the predictions and labels, the model reached the metrics shown in \autoref{tab:test-metrics}.
+The mean two-dimensional position error was \(\SI{1.3492}{m}\), and the median error was \(\SI{0.8767}{m}\).
+The \(R^2\) score of \(0.9233\) indicates that the model explains most of the coordinate variance in the held-out test set.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{ll}
+        \toprule
+        Metric & Value \\
+        \midrule
+        Test MSE, normalized space & 0.0774 \\
+        Physical-space MSE & 1.9051 \\
+        MAE in \(x\) & \(\SI{0.7802}{m}\) \\
+        MAE in \(y\) & \(\SI{0.9324}{m}\) \\
+        Mean position error & \(\SI{1.3492}{m}\) \\
+        Median position error & \(\SI{0.8767}{m}\) \\
+        \(R^2\) score & 0.9233 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Final test-set metrics after converting the normalized model outputs back to meters.}
+    \label{tab:test-metrics}
+\end{table}
+
+\autoref{fig:pred-true} compares predicted and true coordinates separately.
+Most points lie close to the perfect-prediction diagonal, but the spread is slightly larger for the \(y\) coordinate, consistent with the larger \(y\)-MAE in \autoref{tab:test-metrics}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{../build/predicted_vs_true_positions.pdf}
+    \caption{Predicted versus true interaction coordinates on the test set. The diagonal line indicates perfect reconstruction.}
+    \label{fig:pred-true}
+\end{figure}
+\FloatBarrier
+
+\autoref{fig:error-summary} shows the full distribution of Euclidean position errors.
+The distribution is strongly concentrated below a few meters, but it has a tail of harder events with larger reconstruction errors.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{../build/position_error_histogram.pdf}
+    \caption{Distribution of two-dimensional position reconstruction errors on the test set.}
+    \label{fig:error-summary}
+\end{figure}
+\FloatBarrier
+
+Finally, \autoref{fig:error-hit-count} checks whether events with more detected hits are easier to reconstruct.
+The binned trend decreases with increasing hit count, which is physically plausible because more hits provide more timing and geometry information to the Transformer.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{../build/position_error_vs_hit_count.pdf}
+    \caption{Position error as a function of the number of hits in the test event. The red markers show binned means with standard-deviation bars.}
+    \label{fig:error-hit-count}
+\end{figure}
+\FloatBarrier
+
+\section{Conclusion}
+
+The Transformer encoder successfully handled the variable-length IceCube hit sequences using padding masks and masked mean pooling.
+The model achieved a mean test position error of \(\SI{1.3492}{m}\) and a median error below one meter.
+The error-versus-hit-count diagnostic also shows that events with more detected photons are generally reconstructed more accurately.
+
+Possible improvements include tuning the model size, adding positional or time-order embeddings, using a learning-rate schedule, or comparing masked mean pooling with a learned regression token.
+One important limitation of this run is the relatively small local training split of \(10001\) events.
+The dataset description linked in the task material suggests that a much larger IceCube sample is available, so training on more events would be a natural next step and could improve generalization.
+It would also be useful to compare the Transformer directly against the previous graph-neural-network reconstruction model on the same split.
+All code used for data loading, training, evaluation, and plotting is available in the accompanying
+\href{https://github.com/AkramAki/Advanced_DeepLearning_Seminar}{GitHub repository}.
+
+\printbibliography
+
+\end{document}
